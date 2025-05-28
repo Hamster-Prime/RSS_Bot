@@ -2,6 +2,8 @@
 
 这是一个 Telegram 机器人，可以帮助您订阅 RSS 源并通过 Telegram 接收更新。
 
+示例Bot : [Sanite_Ava_RSS_bot](https://t.me/Sanite_Ava_RSS_bot)
+
 ## 功能
 
 *   添加和移除 RSS 订阅源。
@@ -31,14 +33,8 @@
     *   将您的 Telegram Bot Token 添加到 `config.json` 文件中。如果您没有 `config.json` 文件，可以创建一个，或者复制 `config.json.example` 并重命名为 `config.json`。
     *   **参数说明:**
         *   `telegram_token`: (必需) 您的 Telegram Bot 的 API Token。您可以从 BotFather 获取。
-        *   `data_file`: (必需, 默认为 "subscriptions.json") 用于存储用户订阅数据的文件名。该文件将创建在 `data/` 目录下。
+        *   `data_file`: (必需, 默认为 "subscriptions.json") 用于存储用户订阅数据的文件名。
         *   `check_interval_seconds`: (可选, 默认为 300) 机器人检查 RSS 源更新的频率（以秒为单位）。
-
-4.  **创建 `data` 目录:**
-    如果 `data` 目录不存在，请手动创建它。这个目录将用来存放由 `data_file` 配置指定的数据文件。
-    ```bash
-    mkdir data
-    ```
 
 ## 运行机器人
 
