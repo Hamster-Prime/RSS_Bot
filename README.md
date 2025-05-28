@@ -79,10 +79,6 @@ python bot.py
 *   机器人需要持续运行才能接收和推送 RSS 更新。
 *   某些 RSS 源可能格式不规范，`feedparser` 会尝试解析，但可能会出现警告。
 
-## 贡献
-
-欢迎提交 Pull Requests 或报告 Issues。
-
 ## 许可证
 
 本项目采用 [MIT 许可协议](LICENSE)。
