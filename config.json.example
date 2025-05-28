@@ -1,0 +1,5 @@
+{
+  "telegram_token": "YOUR_TELEGRAM_BOT_TOKEN",
+  "data_file": "subscriptions.json",
+  "check_interval_seconds": 300
+}
