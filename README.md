@@ -16,7 +16,7 @@
 
 1.  **克隆仓库或下载文件:**
     ```bash
-    git clone <your-repository-link>
+    git clone https://github.com/Hamster-Prime/RSS_Bot.git
     cd telegram_rss_bot
     ```
     或者直接下载项目文件 (`bot.py`, `requirements.txt`, `config.json.example`, `data/` 目录)。
