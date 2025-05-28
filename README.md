@@ -84,3 +84,5 @@ python bot.py
 欢迎提交 Pull Requests 或报告 Issues。
 
 ## 许可证
+
+本项目采用 [MIT 许可协议](LICENSE)。
