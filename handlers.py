@@ -15,21 +15,6 @@ def is_valid_url(url_string: str) -> bool:
         return False
 
 
-async def schedule_message_deletion(context: ContextTypes.DEFAULT_TYPE, chat_id: int, message_id: int, delay: int = 5):
-    async def delete_message_job(job_context):
-        try:
-            await job_context.bot.delete_message(chat_id=chat_id, message_id=message_id)
-            logger.debug(f"自动删除了消息 {message_id} (来自聊天 {chat_id})")
-        except Exception as e:
-            logger.warning(f"自动删除消息 {message_id} (来自聊天 {chat_id}) 失败: {e}")
-    
-    context.job_queue.run_once(
-        delete_message_job,
-        delay,
-        name=f"delete_{chat_id}_{message_id}"
-    )
-
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     chat_id = update.effective_chat.id
     reply_text = '你好！我是你的 RSS 订阅机器人\n\n/add <RSS链接> 添加订阅源\n/remove <RSS链接或ID> 移除订阅\n/list 列出您当前所有的 RSS 订阅\n\n更多命令请输入 /help 查看。'
@@ -51,32 +36,23 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "/setfooter [自定义文本] - 设置推送到此聊天的消息的自定义页脚 (不带文本则清除)\n"
         "/togglepreview - 切换推送消息中链接预览的显示/隐藏"
     )
-    user_message_id = update.message.message_id
-    chat_id = update.effective_chat.id
-    await schedule_message_deletion(context, chat_id, user_message_id, 10)
-
-    sent_message = await update.message.reply_text(help_text)
-    await schedule_message_deletion(context, chat_id, sent_message.message_id, 10)
+    await update.message.reply_text(help_text)
 
 
 async def add_feed(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user_message_id = update.message.message_id
     chat_id_int = update.effective_chat.id
     chat_id = str(chat_id_int)
-    await schedule_message_deletion(context, chat_id_int, user_message_id, 5)
 
     reply_message_text = ""
     if not context.args:
         reply_message_text = "请输入 RSS 订阅源链接。用法: /add <链接>"
-        sent_message = await update.message.reply_text(reply_message_text)
-        await schedule_message_deletion(context, chat_id_int, sent_message.message_id, 5)
+        await update.message.reply_text(reply_message_text)
         return
 
     feed_url = context.args[0]
     if not is_valid_url(feed_url):
         reply_message_text = f"提供的链接 '{feed_url}' 似乎无效。请检查后重试。"
-        sent_message = await update.message.reply_text(reply_message_text)
-        await schedule_message_deletion(context, chat_id_int, sent_message.message_id, 5)
+        await update.message.reply_text(reply_message_text)
         return
 
     subscriptions_data = data_manager.get_subscriptions()
@@ -91,8 +67,7 @@ async def add_feed(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     if feed_url in subscriptions_data[chat_id]["rss_feeds"]:
         reply_message_text = f"订阅源 {feed_url} 已在您的订阅中。"
-        sent_message = await update.message.reply_text(reply_message_text)
-        await schedule_message_deletion(context, chat_id_int, sent_message.message_id, 5)
+        await update.message.reply_text(reply_message_text)
         return
 
     import asyncio
@@ -109,31 +84,26 @@ async def add_feed(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     }
     data_manager.save_subscriptions(context.bot_data.get('data_file', 'data/subscriptions.json'))
     reply_message_text = f"订阅源 '{feed_title}' ({feed_url}) 添加成功！"
-    sent_message = await update.message.reply_text(reply_message_text)
-    await schedule_message_deletion(context, chat_id_int, sent_message.message_id, 5)
+    await update.message.reply_text(reply_message_text)
     logger.info(f"用户 {chat_id} 添加了订阅源: {feed_url}")
 
 
 async def list_feeds(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user_message_id = update.message.message_id
     chat_id_int = update.effective_chat.id
     chat_id = str(chat_id_int)
-    await schedule_message_deletion(context, chat_id_int, user_message_id, 5)
 
     subscriptions_data = data_manager.get_subscriptions()
     reply_message_text = ""
     if chat_id not in subscriptions_data or not subscriptions_data[chat_id].get("rss_feeds"):
         reply_message_text = "您还没有订阅任何 RSS 源。使用 /add <链接> 添加一个。"
-        sent_message = await update.message.reply_text(reply_message_text)
-        await schedule_message_deletion(context, chat_id_int, sent_message.message_id, 5)
+        await update.message.reply_text(reply_message_text)
         return
 
     message_content = "您当前的 RSS 订阅:\n"
     feeds = subscriptions_data[chat_id]["rss_feeds"]
     if not feeds:
         reply_message_text = "您还没有订阅任何 RSS 源。使用 /add <链接> 添加一个。"
-        sent_message = await update.message.reply_text(reply_message_text)
-        await schedule_message_deletion(context, chat_id_int, sent_message.message_id, 5)
+        await update.message.reply_text(reply_message_text)
         return
 
     for i, (url, data) in enumerate(feeds.items()):
@@ -142,21 +112,17 @@ async def list_feeds(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         keywords_str = f" (关键词: {', '.join(keywords_list)})" if keywords_list else ""
         message_content += f"{i+1}. {title} - {url}{keywords_str}\n"
     
-    sent_message = await update.message.reply_text(message_content)
-    await schedule_message_deletion(context, chat_id_int, sent_message.message_id, 5)
+    await update.message.reply_text(message_content)
 
 
 async def remove_feed(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user_message_id = update.message.message_id
     chat_id_int = update.effective_chat.id
     chat_id = str(chat_id_int)
-    await schedule_message_deletion(context, chat_id_int, user_message_id, 5)
 
     reply_message_text = ""
     if not context.args:
         reply_message_text = "请输入要移除的 RSS 订阅源链接或其 ID (来自 /list)。用法: /remove <链接或ID>"
-        sent_message = await update.message.reply_text(reply_message_text)
-        await schedule_message_deletion(context, chat_id_int, sent_message.message_id, 5)
+        await update.message.reply_text(reply_message_text)
         return
 
     identifier = context.args[0]
@@ -164,8 +130,7 @@ async def remove_feed(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
     if chat_id not in subscriptions_data or not subscriptions_data[chat_id].get("rss_feeds"):
         reply_message_text = "您没有任何订阅可以移除。"
-        sent_message = await update.message.reply_text(reply_message_text)
-        await schedule_message_deletion(context, chat_id_int, sent_message.message_id, 5)
+        await update.message.reply_text(reply_message_text)
         return
 
     feeds = subscriptions_data[chat_id]["rss_feeds"]
@@ -190,21 +155,17 @@ async def remove_feed(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     else:
         reply_message_text = f"找不到标识符为 '{identifier}' 的订阅源。使用 /list 查看您的订阅源及其 ID/链接。"
     
-    sent_message = await update.message.reply_text(reply_message_text)
-    await schedule_message_deletion(context, chat_id_int, sent_message.message_id, 5)
+    await update.message.reply_text(reply_message_text)
 
 
 async def add_keyword(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user_message_id = update.message.message_id
     chat_id_int = update.effective_chat.id
     chat_id = str(chat_id_int)
-    await schedule_message_deletion(context, chat_id_int, user_message_id, 5)
 
     reply_message_text = ""
     if len(context.args) < 2:
         reply_message_text = "用法: /addkeyword <RSS链接或ID> <关键词>"
-        sent_message = await update.message.reply_text(reply_message_text)
-        await schedule_message_deletion(context, chat_id_int, sent_message.message_id, 5)
+        await update.message.reply_text(reply_message_text)
         return
 
     feed_identifier = context.args[0]
@@ -213,8 +174,7 @@ async def add_keyword(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
     if chat_id not in subscriptions_data or not subscriptions_data[chat_id].get("rss_feeds"):
         reply_message_text = "您没有任何订阅可以添加关键词。"
-        sent_message = await update.message.reply_text(reply_message_text)
-        await schedule_message_deletion(context, chat_id_int, sent_message.message_id, 5)
+        await update.message.reply_text(reply_message_text)
         return
 
     feeds = subscriptions_data[chat_id]["rss_feeds"]
@@ -229,8 +189,7 @@ async def add_keyword(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
     if not target_feed_url:
         reply_message_text = f"找不到标识符为 '{feed_identifier}' 的订阅源。请使用 /list 查看。"
-        sent_message = await update.message.reply_text(reply_message_text)
-        await schedule_message_deletion(context, chat_id_int, sent_message.message_id, 5)
+        await update.message.reply_text(reply_message_text)
         return
 
     feed_data = subscriptions_data[chat_id]["rss_feeds"][target_feed_url]
@@ -245,21 +204,17 @@ async def add_keyword(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         reply_message_text = f"关键词 '{keyword_to_add}' 已添加到 '{feed_data.get('title', target_feed_url)}'。"
         logger.info(f"用户 {chat_id} 向订阅源 {target_feed_url} 添加了关键词 '{keyword_to_add}'")
     
-    sent_message = await update.message.reply_text(reply_message_text)
-    await schedule_message_deletion(context, chat_id_int, sent_message.message_id, 5)
+    await update.message.reply_text(reply_message_text)
 
 
 async def remove_keyword(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user_message_id = update.message.message_id
     chat_id_int = update.effective_chat.id
     chat_id = str(chat_id_int)
-    await schedule_message_deletion(context, chat_id_int, user_message_id, 5)
 
     reply_message_text = ""
     if len(context.args) < 2:
         reply_message_text = "用法: /removekeyword <RSS链接或ID> <关键词>"
-        sent_message = await update.message.reply_text(reply_message_text)
-        await schedule_message_deletion(context, chat_id_int, sent_message.message_id, 5)
+        await update.message.reply_text(reply_message_text)
         return
 
     feed_identifier = context.args[0]
@@ -268,8 +223,7 @@ async def remove_keyword(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     if chat_id not in subscriptions_data or not subscriptions_data[chat_id].get("rss_feeds"):
         reply_message_text = "您没有任何订阅可以移除关键词。"
-        sent_message = await update.message.reply_text(reply_message_text)
-        await schedule_message_deletion(context, chat_id_int, sent_message.message_id, 5)
+        await update.message.reply_text(reply_message_text)
         return
 
     feeds = subscriptions_data[chat_id]["rss_feeds"]
@@ -294,21 +248,17 @@ async def remove_keyword(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         else:
             reply_message_text = f"关键词 '{keyword_to_remove}' 未在 '{feed_data.get('title', target_feed_url)}' 中找到。"
             
-    sent_message = await update.message.reply_text(reply_message_text)
-    await schedule_message_deletion(context, chat_id_int, sent_message.message_id, 5)
+    await update.message.reply_text(reply_message_text)
 
 
 async def list_keywords(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user_message_id = update.message.message_id
     chat_id_int = update.effective_chat.id
     chat_id = str(chat_id_int)
-    await schedule_message_deletion(context, chat_id_int, user_message_id, 5)
 
     reply_message_text = ""
     if not context.args:
         reply_message_text = "用法: /listkeywords <RSS链接或ID>"
-        sent_message = await update.message.reply_text(reply_message_text)
-        await schedule_message_deletion(context, chat_id_int, sent_message.message_id, 5)
+        await update.message.reply_text(reply_message_text)
         return
 
     feed_identifier = context.args[0]
@@ -316,8 +266,7 @@ async def list_keywords(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     if chat_id not in subscriptions_data or not subscriptions_data[chat_id].get("rss_feeds"):
         reply_message_text = "您没有任何订阅。"
-        sent_message = await update.message.reply_text(reply_message_text)
-        await schedule_message_deletion(context, chat_id_int, sent_message.message_id, 5)
+        await update.message.reply_text(reply_message_text)
         return
 
     feeds = subscriptions_data[chat_id]["rss_feeds"]
@@ -342,21 +291,17 @@ async def list_keywords(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         else:
             reply_message_text = f"'{title}' 未设置关键词。将发送所有新项目。"
             
-    sent_message = await update.message.reply_text(reply_message_text)
-    await schedule_message_deletion(context, chat_id_int, sent_message.message_id, 5)
+    await update.message.reply_text(reply_message_text)
 
 
 async def remove_all_keywords(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user_message_id = update.message.message_id
     chat_id_int = update.effective_chat.id
     chat_id = str(chat_id_int)
-    await schedule_message_deletion(context, chat_id_int, user_message_id, 5)
 
     reply_message_text = ""
     if not context.args:
         reply_message_text = "用法: /removeallkeywords <RSS链接或ID>"
-        sent_message = await update.message.reply_text(reply_message_text)
-        await schedule_message_deletion(context, chat_id_int, sent_message.message_id, 5)
+        await update.message.reply_text(reply_message_text)
         return
 
     feed_identifier = context.args[0]
@@ -364,8 +309,7 @@ async def remove_all_keywords(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     if chat_id not in subscriptions_data or not subscriptions_data[chat_id].get("rss_feeds"):
         reply_message_text = "您没有任何订阅。"
-        sent_message = await update.message.reply_text(reply_message_text)
-        await schedule_message_deletion(context, chat_id_int, sent_message.message_id, 5)
+        await update.message.reply_text(reply_message_text)
         return
 
     feeds = subscriptions_data[chat_id]["rss_feeds"]
@@ -390,15 +334,12 @@ async def remove_all_keywords(update: Update, context: ContextTypes.DEFAULT_TYPE
         else:
             reply_message_text = f"订阅源 '{feed_data.get('title', target_feed_url)}' 原本就没有设置关键词。"
             
-    sent_message = await update.message.reply_text(reply_message_text)
-    await schedule_message_deletion(context, chat_id_int, sent_message.message_id, 5)
+    await update.message.reply_text(reply_message_text)
 
 
 async def set_custom_footer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user_message_id = update.message.message_id
     chat_id_int = update.effective_chat.id
     chat_id = str(chat_id_int)
-    await schedule_message_deletion(context, chat_id_int, user_message_id, 5)
 
     subscriptions_data = data_manager.get_subscriptions()
     if chat_id not in subscriptions_data:
@@ -420,15 +361,12 @@ async def set_custom_footer(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         reply_message_text = "自定义页脚已清除。"
     
     logger.info(f"用户 {chat_id} 将自定义页脚设置为: '{footer_text}'")
-    sent_message = await update.message.reply_text(reply_message_text)
-    await schedule_message_deletion(context, chat_id_int, sent_message.message_id, 5)
+    await update.message.reply_text(reply_message_text)
 
 
 async def toggle_link_preview(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user_message_id = update.message.message_id
     chat_id_int = update.effective_chat.id
     chat_id = str(chat_id_int)
-    await schedule_message_deletion(context, chat_id_int, user_message_id, 5)
 
     subscriptions_data = data_manager.get_subscriptions()
     if chat_id not in subscriptions_data:
@@ -445,6 +383,5 @@ async def toggle_link_preview(update: Update, context: ContextTypes.DEFAULT_TYPE
     reply_message_text = f"链接预览已切换为: {status_text}。"
     
     logger.info(f"用户 {chat_id} 将链接预览切换为: {status_text}")
-    sent_message = await update.message.reply_text(reply_message_text)
-    await schedule_message_deletion(context, chat_id_int, sent_message.message_id, 5)
+    await update.message.reply_text(reply_message_text)
 
