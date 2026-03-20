@@ -49,9 +49,8 @@ pip install -r requirements.txt
 ```
 
 依赖包包括：
-- `python-telegram-bot` - Telegram Bot API
+- `python-telegram-bot[job-queue]` - Telegram Bot API 与定时任务支持
 - `feedparser` - RSS/Atom 解析器
-- `requests` - HTTP 请求库
 
 ### 3. 配置机器人
 

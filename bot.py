@@ -37,12 +37,16 @@ def _register_handlers(application: Application) -> None:
         application.add_handler(CommandHandler(command, handler))
 
 
-def _setup_job_queue(application: Application, check_interval: int) -> None:
+def _setup_job_queue(application: Application, check_interval: int) -> bool:
     if not isinstance(check_interval, int) or check_interval <= 0:
         logger.warning(f"无效的 check_interval_seconds: {check_interval}。默认为 300 秒。")
         check_interval = 300
     
     job_queue = application.job_queue
+    if job_queue is None:
+        logger.error("JobQueue 未初始化，请安装 `python-telegram-bot[job-queue]` 依赖。")
+        return False
+
     job_queue.run_repeating(
         check_feeds_job_wrapper,
         interval=check_interval,
@@ -50,6 +54,7 @@ def _setup_job_queue(application: Application, check_interval: int) -> None:
     )
     
     logger.info(f"订阅源检查间隔: {check_interval} 秒")
+    return True
 
 
 def main() -> None:
@@ -72,7 +77,8 @@ def main() -> None:
     _register_handlers(application)
 
     check_interval = cfg.get("check_interval_seconds", 300)
-    _setup_job_queue(application, check_interval)
+    if not _setup_job_queue(application, check_interval):
+        return
 
     logger.info("机器人启动中...")
     application.run_polling()

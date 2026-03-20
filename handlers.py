@@ -158,10 +158,7 @@ async def remove_feed(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     if feed_to_remove:
         removed_title = feeds[feed_to_remove].get('title', feed_to_remove)
         del subscriptions_data[chat_id]["rss_feeds"][feed_to_remove]
-        
-        if not subscriptions_data[chat_id]["rss_feeds"]:
-            del subscriptions_data[chat_id]
-        
+
         data_manager.save_subscriptions(context.bot_data.get('data_file', 'data/subscriptions.json'))
         reply_message_text = f"订阅源 '{removed_title}' 移除成功。"
         logger.info(f"用户 {chat_id} 移除了订阅源: {feed_to_remove}")
